@@ -7,8 +7,6 @@ url = "https://raw.githubusercontent.com/plotly/datasets/master/gapminder_unfilt
 try:
     df = pd.read_csv(url)
 except Exception:
-    # Резервный вариант: встроенный датасет Plotly.
-    # Он позволяет запустить приложение даже при временной недоступности GitHub.
     df = px.data.gapminder()
 
 df = df.dropna(subset=["country", "continent", "year", "lifeExp", "pop", "gdpPercap"]).copy()
@@ -16,7 +14,6 @@ df["year"]=df["year"].astype(int)
 
 years=sorted(df["year"].unique().tolist())
 countries=sorted(df["country"].unique().tolist())
-
 labels = {
     "pop": "Население",
     "lifeExp": "Ожидаемая продолжительность жизни",
@@ -26,16 +23,16 @@ measure_options = [
     {"label": label, "value": value}
     for value, label in labels.items()
 ]
-
 default_countries = [
     c for c in ["Canada", "United States", "China", "India", "Germany"]
     if c in countries
 ]
 default_year = 2007 if 2007 in years else max(years)
 
+#app
 app=Dash(__name__)
 server=app.server
-app.title="Демография — Gapminder Dashboard"
+app.title="Демография"
 
 page_style = {
     "fontFamily": "Inter, Arial, sans-serif",
@@ -94,7 +91,7 @@ def control(label, component):
 app.layout = html.Div([
     html.Div([
         html.H1(
-            "Демографический дашборд Gapminder",
+            "Демография",
             style={"margin": "0", "fontSize": "30px", "fontWeight": "800"}
         ),
     ], style=header_style),
@@ -108,7 +105,7 @@ app.layout = html.Div([
                     value=default_countries,
                     multi=True,
                     id="country-selection",
-                    placeholder="Выберите страны..."
+                    placeholder="Выберите страны"
                 )
             ),
             control(
@@ -150,7 +147,7 @@ app.layout = html.Div([
         ], style=controls_style),
 
         html.Div([
-            html.Label("Год — общий кросс-фильтр", style=label_style),
+            html.Label("Год - кросс-фильтр", style=label_style),
             dcc.Slider(
                 min=min(years),
                 max=max(years),
@@ -194,6 +191,7 @@ app.layout = html.Div([
 ], style=page_style)
 
 
+#линейный график
 @callback(
     Output("line-chart", "figure"),
     Input("country-selection", "value"),
@@ -236,7 +234,7 @@ def update_line(countries, y_measure, selected_year):
     return fig
 
 
-#    КЛИК ПО ЛИНИИ -> ГОД ОБЩЕГО ФИЛЬТРА
+#линия год
 @callback(
     Output("year-filter", "value"),
     Input("line-chart", "clickData"),
@@ -245,15 +243,12 @@ def update_line(countries, y_measure, selected_year):
 def year_from_line_click(click_data):
     if not click_data or not click_data.get("points"):
         return no_update
-
     clicked_year = int(round(float(click_data["points"][0]["x"])))
     if clicked_year in years:
         return clicked_year
-
-    # На случай, если клик вернул год, отсутствующий в общем списке:
     return min(years, key=lambda y: abs(y - clicked_year))
 
-
+#пузырьковая
 @callback(
     Output("bubble-chart", "figure"),
     Input("year-filter", "value"),
@@ -265,7 +260,6 @@ def update_bubble(year, x_measure, y_measure, size_measure):
     dff = df[df["year"] == year].dropna(
         subset=[x_measure, y_measure, size_measure, "continent", "country"]
     ).copy()
-
     fig = px.scatter(
         dff,
         x=x_measure,
@@ -290,6 +284,7 @@ def update_bubble(year, x_measure, y_measure, size_measure):
     return fig
 
 
+#круговая
 @callback(
     Output("top15-chart", "figure"),
     Output("continent-pie", "figure"),
@@ -337,8 +332,5 @@ def update_year_dependent_charts(year):
     )
 
     return fig_top, fig_pie
-
-
 if __name__ == "__main__":
-    # В обычном Python / Render:
     app.run(debug=False)
